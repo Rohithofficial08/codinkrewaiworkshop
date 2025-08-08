@@ -1,6 +1,7 @@
 from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from app.core.json_converter import get_answer_from_json_string
 from app.core.retriever import retrieve_chunks, build_index
 from app.core.engine import evaluate_decision
 from app.ingestion.load import load_content
@@ -37,19 +38,15 @@ class QueryRequest(BaseModel):
 def root():
     return {"message": "Coding Krew is on its way"}
 
-@app.post("/query")
-def query_docs(request: QueryRequest):
-    session_id = request.session_id
+def query_docs(session_id:str,questions:List[str]):
+    answers = []
     try:
-        relevant_chunks = retrieve_chunks(request.query,session_id, k=5)
-        answer = evaluate_decision(request.query,session_id)
-        print("Query received:", request.query)
-        print("Chunks retrieved:", relevant_chunks)
-        print("Answer returned:", answer)
+        for question in questions:
+            relevant_chunks = retrieve_chunks(question,session_id, k=5)
+            answer = evaluate_decision(question,session_id)
+            answers.append(get_answer_from_json_string(answer))
         return {
-            "query": request.query,
-            "response": answer,
-            "retrieved_clauses": relevant_chunks
+            "answers": answers
         }
     except Exception as e:
         return {"error": str(e)}
@@ -66,7 +63,8 @@ async def upload_docs(
         "pdf_url": "https://example.com/file.pdf"
     }
     """
-    pdf_url = body.get("pdf_url")
+    pdf_url = body.get("documents")
+    questions = body.get("questions")
     if not pdf_url:
         return {"error": "pdf_url is required"}
 
@@ -105,12 +103,7 @@ async def upload_docs(
         # Build index
         build_index(alltext_chunks, session_id, force_rebuild=True)
 
-        return {
-            "status": "success",
-            "indexed_files": responses,
-            "session_id": session_id,
-            "message": "Document parsed and indexed."
-        }
+        return query_docs(session_id=session_id,questions=questions)
 
     except Exception as e:
         return {"error": str(e)}
