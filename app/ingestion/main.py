@@ -8,6 +8,10 @@ from app.ingestion.chunk import chunk_text
 from typing import List
 from datetime import datetime
 import os
+import requests
+from datetime import datetime
+from fastapi import Body
+
 
 app = FastAPI(
     title="CodingKrew AI",
@@ -53,39 +57,60 @@ def query_docs(request: QueryRequest):
 
 
 @app.post("/upload_docs")
-async def upload_docs(uploaded_files: List[UploadFile] = File(...)):
+async def upload_docs(
+    body: dict = Body(...)
+):
+    """
+    Accepts raw JSON:
+    {
+        "pdf_url": "https://example.com/file.pdf"
+    }
+    """
+    pdf_url = body.get("pdf_url")
+    if not pdf_url:
+        return {"error": "pdf_url is required"}
+
     responses = []
     alltext_chunks = []
     session_id = datetime.now().strftime("%Y%m%d_%H%M%S")
     index_dir = f"session_{session_id}"
 
     try:
-        for uploaded_file in uploaded_files:
-            contents = await uploaded_file.read()
-            file_path = f"temp_uploads/{index_dir}/{uploaded_file.filename}"
-            os.makedirs(os.path.dirname(file_path), exist_ok=True)
-            with open(file_path, "wb") as f:
-                f.write(contents)
+        # Download PDF
+        r = requests.get(pdf_url)
+        r.raise_for_status()
 
-            raw_text = load_content(file_path)
-            text_chunks = chunk_text(raw_text)
-            alltext_chunks.extend(text_chunks)
+        # Derive filename
+        filename = pdf_url.split("/")[-1]
+        if not filename.lower().endswith(".pdf"):
+            filename += ".pdf"
 
-            responses.append({
-                "filename": uploaded_file.filename,
-                "status": "parsed and added to combined index" ,
-                "session_id": session_id 
-            })
+        # Save locally
+        file_path = f"temp_uploads/{index_dir}/{filename}"
+        os.makedirs(os.path.dirname(file_path), exist_ok=True)
+        with open(file_path, "wb") as f:
+            f.write(r.content)
 
+        # Parse & chunk
+        raw_text = load_content(file_path)
+        text_chunks = chunk_text(raw_text)
+        alltext_chunks.extend(text_chunks)
+
+        responses.append({
+            "url": pdf_url,
+            "status": "downloaded, parsed, and added to combined index",
+            "session_id": session_id
+        })
+
+        # Build index
         build_index(alltext_chunks, session_id, force_rebuild=True)
 
         return {
             "status": "success",
             "indexed_files": responses,
-            "session_id": session_id ,
-            "message": "All uploaded documents parsed and indexed into a single index."
+            "session_id": session_id,
+            "message": "Document parsed and indexed."
         }
 
     except Exception as e:
         return {"error": str(e)}
-
