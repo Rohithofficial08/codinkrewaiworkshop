@@ -19,7 +19,7 @@ Your job is to:
 1. Identify the important fields from the query (e.g., age, procedure, location, policy duration).
 2. Think step-by-step to determine if the policy covers this case.
 3. Reference specific clauses to justify your reasoning.
-4. Give a  response in one line with answer (Even if only the data slightly matches)
+4. Give a  response in one line with answer and do not say refer to this or that section.Give the concise answer(Even if only the data slightly matches)
 
 ---
 

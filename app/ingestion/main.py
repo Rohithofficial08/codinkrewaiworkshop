@@ -35,6 +35,9 @@ class QueryRequest(BaseModel):
     session_id : str
 
 @app.get("/")
+def root_main():
+    return {"message": "Coding Krew is on its way"}
+@app.get("/api/v1/")
 def root():
     return {"message": "Coding Krew is on its way"}
 
@@ -53,7 +56,7 @@ def query_docs(session_id:str,questions:List[str]):
 
 
 
-@app.post("/upload_docs")
+@app.post("/api/v1/hackrx/run")
 async def upload_docs(
     body: dict = Body(...)
 ):
