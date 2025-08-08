@@ -9,5 +9,7 @@ wheels/
 # Virtual environments
 .venv
 config/
+data/
+temp_uploads/
 ui/app.txt
 data/docs/

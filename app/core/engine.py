@@ -20,7 +20,7 @@ Your job is to:
 2. Think step-by-step to determine if the policy covers this case.
 3. Reference specific clauses to justify your reasoning.
 4. Give a structured JSON response with:
-    - decision ("approved" or "rejected")
+    - answer (Even if only the data slightly matches)
     - amount (if any)
     - justification
 
